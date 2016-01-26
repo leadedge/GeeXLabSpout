@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+//
+// EXAMPLE SPOUT SENDER - using GeexLabSpout.dll
+//
+
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="Shadertoy voronoi distances demo (OpenGL 2.1)" 
+          width="800" height="600" 
+          gl_version_major="2" gl_version_minor="1"
+          build_opengl_extensions_list="0" />
+
+
+<gpu_program name="gpu_program" >
+	<raw_data_vs><![CDATA[	 
+void main()
+{	
+	gl_TexCoord[0] = gl_MultiTexCoord0;
+  gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;		
+}
+  ]]></raw_data_vs>
+  
+	<raw_data_ps><![CDATA[	 
+
+// https://www.shadertoy.com/view/ldl3W8
+  
+uniform vec3      iResolution;     // viewport resolution (in pixels)
+uniform float     iGlobalTime;     // shader playback time (in seconds)
+uniform vec4      iMouse;          // mouse pixel coords. xy: current (if MLB down), zw: click
+uniform sampler2D iChannel0;
+
+// Created by inigo quilez - iq/2013
+// License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
+
+// I've not seen anybody out there computing correct cell interior distances for Voronoi
+// patterns yet. That's why they cannot shade the cell interior correctly, and why you've
+// never seen cell boundaries rendered correctly. 
+//
+// However, here's how you do mathematically correct distances (note the equidistant and non
+// degenerated grey isolines inside the cells) and hence edges (in yellow):
+//
+// http://www.iquilezles.org/www/articles/voronoilines/voronoilines.htm
+
+
+#define ANIMATE
+
+float hash( float n )
+{
+    return fract(sin(n)*43758.5453);
+}
+
+vec2 hash( vec2 p )
+{
+    p = vec2( dot(p,vec2(127.1,311.7)), dot(p,vec2(269.5,183.3)) );
+	return fract(sin(p)*43758.5453);
+}
+
+vec3 voronoi( in vec2 x )
+{
+    vec2 n = floor(x);
+    vec2 f = fract(x);
+
+    //----------------------------------
+    // first pass: regular voronoi
+    //----------------------------------
+	vec2 mg, mr;
+
+    float md = 8.0;
+    for( int j=-1; j<=1; j++ )
+    for( int i=-1; i<=1; i++ )
+    {
+        vec2 g = vec2(float(i),float(j));
+		vec2 o = hash( n + g );
+		#ifdef ANIMATE
+        o = 0.5 + 0.5*sin( iGlobalTime + 6.2831*o );
+        #endif	
+        vec2 r = g + o - f;
+        float d = dot(r,r);
+
+        if( d<md )
+        {
+            md = d;
+            mr = r;
+            mg = g;
+        }
+    }
+
+    //----------------------------------
+    // second pass: distance to borders
+    //----------------------------------
+    md = 8.0;
+    for( int j=-2; j<=2; j++ )
+    for( int i=-2; i<=2; i++ )
+    {
+        vec2 g = mg + vec2(float(i),float(j));
+		vec2 o = hash( n + g );
+		#ifdef ANIMATE
+        o = 0.5 + 0.5*sin( iGlobalTime + 6.2831*o );
+        #endif	
+        vec2 r = g + o - f;
+
+        if( length(mr-r)<0.0001 ) continue;
+
+        // distance to line		
+        float d = dot( 0.5*(mr+r), normalize(r-mr) );
+
+        md = min( md, d );
+    }
+
+    return vec3( md, mr );
+}
+
+void main( void )
+{
+    vec2 p = gl_FragCoord.xy/iResolution.xx;
+
+    vec3 c = voronoi( 8.0*p );
+
+    // isolines
+    vec3 col = c.x*(0.5 + 0.5*sin(64.0*c.x))*vec3(1.0);
+    // borders	
+    col = mix( vec3(1.0,0.6,0.0), col, smoothstep( 0.04, 0.07, c.x ) );
+    // feature points
+    float dd = length( c.yz );
+    col = mix( vec3(1.0,0.6,0.1), col, smoothstep( 0.0, 0.12, dd) );
+    col += vec3(1.0,0.6,0.1)*(1.0-smoothstep( 0.0, 0.04, dd));
+
+    gl_FragColor = vec4(col,1.0);
+
+}]]></raw_data_ps>
+
+</gpu_program>
+
+
+//
+// SPOUT IS NEEDED IN INIT, FRAME, UPDATE AND RESIZE
+// ALSO TERMINATE HAS TO BE ADDED
+//
+
+<script name="init_scene" run_mode="INIT" >
+
+	<raw_data><![CDATA[	
+    
+		winW, winH = gh_window.getsize()
+   		font_a = gh_utils.font_create("Tahoma", 14)
+		
+		camera_ortho = gh_camera.create_ortho(-winW/2, winW/2, -winH/2, winH/2, 1.0, -1.0)
+		gh_camera.set_viewport(camera_ortho, 0, 0, winW, winH)
+		gh_camera.set_position(camera_ortho, 0, 0, 1)
+
+
+		gpu_prog_01 = gh_node.getid("gpu_program")
+
+		local abs_path=0
+		tex01 = gh_texture.create_from_file("cell_texture.jpg", 3, abs_path) -- needed ?
+
+		mesh_quad = gh_mesh.create_quad(winW, winH)
+		gh_object.use_gl2_vertex_array(mesh_quad, 1) -- *** Old OpenGL... ***
+
+		gh_renderer.set_vsync(0)
+		gh_renderer.set_scissor_state(0)
+
+		--
+		-- SPOUT DLL INITIALIZATION
+		--
+		local demo_dir = gh_utils.get_demo_dir()		-- The local folder containing Spout.dll
+		dylib_filename = "GeexLabSpout.dll"
+		dlib = gh_utils.dylib_load(demo_dir .. dylib_filename)	-- Load the dll
+		gh_utils.dylib_set_message(dlib, "Voronoi_Distances")	-- The Spout sender name for this shader
+		gh_utils.dylib_start(dlib, winW, winH, "")		-- Start the dll with the window dimensions
+
+
+	]]></raw_data>
+</script> 
+ 
+
+<script name="update_scene" run_mode="FRAME" >
+
+	<raw_data><![CDATA[	
+
+		elapsed_time = gh_utils.get_elapsed_time()
+		gh_renderer.set_depth_test_state(1)
+		gh_camera.bind(camera_ortho)
+		gh_renderer.clear_color_depth_buffers(0.2, 0.2, 0.2, 1.0, 1.0)
+		
+		gh_gpu_program.bind(gpu_prog_01)
+		
+		mouse_x, mouse_y = gh_input.mouse_getpos() -- default
+
+		--
+		-- SPOUT - get updated variable data from the Spout dll
+		--
+		gh_utils.dylib_set_message(dlib, "MouseX")
+		local msg = gh_utils.dylib_get_message(dlib)
+		mouse_x = tonumber(msg)
+
+		gh_utils.dylib_set_message(dlib, "MouseY")
+		local msg2 = gh_utils.dylib_get_message(dlib)
+		mouse_y = tonumber(msg2)
+
+		gh_utils.dylib_set_message(dlib, "Speed")
+		local msg3 = gh_utils.dylib_get_message(dlib)
+		speed = tonumber(msg3)
+
+		--
+
+		-- gh_gpu_program.uniform1f(gpu_prog_01, "iGlobalTime", elapsed_time)
+		gh_gpu_program.uniform1f(gpu_prog_01, "iGlobalTime", speed) -- for Spout
+		gh_gpu_program.uniform3f(gpu_prog_01, "iResolution", winW, winH, 0)
+		gh_gpu_program.uniform4f(gpu_prog_01, "iMouse", mouse_x, winH-mouse_y, 0, 0)
+		gh_gpu_program.uniform1i(gpu_prog_01, "iChannel0", 0);
+
+
+		gh_texture.bind(tex01, 0)
+		gh_object.render(mesh_quad)
+
+		--
+		-- SPOUT - inform the dll
+		--
+		gh_utils.dylib_frame(dlib, elapsed_time, "solid")
+		--
+		-- Show what the example is
+		gh_utils.font_render(font_a, 10, 20, 0.2, 1.0, 0.0, 1.0, "Spout sender demo - (www.spout.zeal.co)")
+
+	]]></raw_data>
+</script> 
+	
+
+
+<script name="resize_scene" run_mode="SIZE" >
+	<raw_data><![CDATA[	
+
+		winW, winH = gh_window.getsize(0)
+		aspect = 1.333
+
+		if (winH > 0) then
+		  aspect = winW / winH
+		end  
+		
+		gh_camera.update_ortho(camera_ortho, -winW/2, winW/2, -winH/2, winH/2, 1.0, -1.0)
+		gh_camera.set_viewport(camera_ortho, 0, 0, winW, winH)
+
+		gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+		gh_mesh.update_quad_size(mesh_quad, winW, winH)
+
+		--
+		-- SPOUT - Send resized window dimesnions to the dll
+		--
+		gh_utils.dylib_resize(dlib, winW, winH, "")		
+
+	]]></raw_data>
+</script> 
+
+
+// SPOUT - THIS HAS TO BE ADDED TO CLOSE THE DLL
+<script name="kill_scene" run_mode="TERMINATE" >
+	<raw_data><![CDATA[	
+
+		gh_utils.dylib_stop(dlib, "")
+		gh_utils.dylib_unload(dlib)
+    
+	]]></raw_data>
+</script> 
+
+
+  
+</glsl_hacker>
