@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+//
+// 	SPOUTBOX - Basic Spout sender using GeexLabSpout.dll
+//
+//	Based on - GeeXLab_CodeSamplesPack\moon3d\gl-210-built-in-meshesdemo_box_gl2.xml
+//	Works OK E&OE
+//
+// SPOUT IS NEEDED IN INIT, FRAME, UPDATE AND RESIZE
+// ALSO TERMINATE HAS TO BE ADDED
+//
+
+<glsl_hacker>
+	
+<window name="win3d01" title="SpoutBox" 
+   width="640" height="360"
+    gl_version_major="2" gl_version_minor="1" />
+   
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[
+
+			app_dir = gh_utils.get_scripting_libs_dir()
+			dofile(app_dir .. "lua/Moon3D_v2.lua")
+
+			moon3d.init(2, 1)
+			moon3d.graphics.vsync(0)
+			
+			mesh = moon3d.graphics.newBox(50, 50, 50, 10, 10, 10)
+			tex01 = moon3d.image.load2d("SpoutLogoMarble3.bmp")
+
+			camera = moon3d.camera.getDefaultPersp()
+			moon3d.camera.setPosition(camera, 0, 20, 90)
+
+			--
+			-- SPOUT - dll initialization
+			--
+			local demo_dir = gh_utils.get_demo_dir()		-- The local folder containing Spout.dll
+			dylib_filename = "GeexLabSpout.dll"
+			dlib = gh_utils.dylib_load(demo_dir .. dylib_filename)	-- Load the dll
+			gh_utils.dylib_set_message(dlib, "SpoutBox")		-- The Spout sender name for this shader
+			winW, winH = moon3d.window.getSize()			-- Sender dimensions same as the window
+			gh_utils.dylib_start(dlib, winW, winH, "")		-- Start the dll with the window dimensions
+			--
+
+		]]></raw_data>
+	</script> 
+
+  
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+
+			moon3d.startFrame(0.39, 0.025, 0.00, 1.0)
+			local elapsed_time = moon3d.getTime()
+			moon3d.camera.bind(camera)
+			moon3d.object.setEulerAngles(mesh, elapsed_time*20, elapsed_time*20, elapsed_time*20)
+			moon3d.graphics.wireframe(0)
+			moon3d.graphics.drawWithTexturing(mesh, tex01, 1, 1, 1, 1, 1, 1)
+			moon3d.endFrame()
+
+			--
+			-- SPOUT - inform the dll
+			--
+			gh_utils.dylib_frame(dlib, elapsed_time, "solid")
+			--
+
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+
+			moon3d.window.resize()
+			
+			--
+			-- SPOUT - Send resized window dimesnions to the dll
+			--
+			winW, winH = moon3d.window.getSize()
+			gh_utils.dylib_resize(dlib, winW, winH, "")
+			--
+    
+		]]></raw_data>
+	</script> 
+
+
+  	//
+	// SPOUT - This has to be added to terminate the dll
+	//
+	<script name="kill_scene" run_mode="TERMINATE" >
+		<raw_data><![CDATA[	
+
+			gh_utils.dylib_stop(dlib, "")
+			gh_utils.dylib_unload(dlib)
+	    
+		]]></raw_data>
+	</script> 
+  
+</glsl_hacker>
