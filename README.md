@@ -6,7 +6,8 @@ http://www.geeks3d.com/geexlab/
 to allow sharing the shader output with any Spout receiver.
 
 Based on the dll example in he GeexLab sample pack : http://www.geeks3d.com/dl/showd/385
-\host_api\User_Plugin
+
+(\host_api\User_Plugin)
 
 Each shader has to be edited individually to include the dll functions required.
 
