@@ -1,5 +1,9 @@
 # GeexLabSpout
-Spout sender dll for GLSLHacker and GeexLab to allow sharing the shader output with any Spout receiver.
+Spout sender dll for GeexLab 
+
+http://www.geeks3d.com/geexlab/
+
+to allow sharing the shader output with any Spout receiver.
 
 Based on the dll example in he GeexLab sample pack : http://www.geeks3d.com/dl/showd/385
 \host_api\User_Plugin
