@@ -26,6 +26,9 @@
 //
 //		26.01.16	- updated GLSLHacker version for the new GeexLab 
 //					- completed SpoutControls with speed
+//		27.01.16	- cleaned up a basic version of the plugin
+//					- Continued work on SpoutControls uses a separate experimental version
+//					- Release local texture on stop
 //
 //	----------------------------------------------------------------------------------
 //
@@ -50,7 +53,7 @@
 
 // Spout
 #include "..\..\SpoutSDK\Spout.h"
-#include "..\..\SpoutSDK\SpoutControls.h"
+
 
 #ifdef _PLATFORM_WINDOWS
 BOOL APIENTRY DllMain( HMODULE hModule,
@@ -60,11 +63,11 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 {
 	switch (ul_reason_for_call)
 	{
-	case DLL_PROCESS_ATTACH:
-	case DLL_THREAD_ATTACH:
-	case DLL_THREAD_DETACH:
-	case DLL_PROCESS_DETACH:
-		break;
+		case DLL_PROCESS_ATTACH:
+		case DLL_THREAD_ATTACH:
+		case DLL_THREAD_DETACH:
+		case DLL_PROCESS_DETACH:
+			break;
 	}
 	return TRUE;
 }
@@ -105,54 +108,12 @@ std::string g_message;
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Spout
-float g_Xvalue = 0.0f;
-float g_Yvalue = 0.0f;
-float g_Speed  = 0.0f;
-float g_UserSpeed = 0.0f;
-vector<control> myControls; // Vector of controls to be used
-double elapsedTime = 0;
-double lastTime = 0;
-double PCFreq = 0;
-__int64 CounterStart = 0;
-void StartCounter();
-double GetCounter();
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-// Spout Controls
-// Local control update function
-void UpdateControlParameters()
-{
-	float speed = 0.0f;
-
-	// Control names and types must match those in the controls definition file
-	// Names are case sensitive
-	for(unsigned int i=0; i<myControls.size(); i++) {
-		if(myControls.at(i).name == "MouseX") {
-			g_Xvalue = myControls.at(i).value;
-		}
-		if(myControls.at(i).name == "MouseY") {
-			g_Yvalue = myControls.at(i).value;
-		}
-		if(myControls.at(i).name == "Speed") {
-			g_UserSpeed = myControls.at(i).value;
-		}
-	}
-}
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-// Spout
-SpoutSender sender;
-SpoutControls spoutcontrols;
-
-char sendername[256];
-GLuint sendertexture = 0;	// Local OpenGL texture used for sharing
+SpoutSender sender;			// The Spout sender object
+char g_SenderName[256];		// The name of the sender - set by the user
+GLuint g_SenderTexture = 0;	// Local OpenGL texture used for sharing
 bool bInitialized = false;	// Initialization result
 
+// Local function to create a texture that the sender can share
 bool InitGLtexture(GLuint &texID, unsigned int width, unsigned int height)
 {
 
@@ -170,26 +131,7 @@ bool InitGLtexture(GLuint &texID, unsigned int width, unsigned int height)
 	return true;
 }
 
-void StartCounter()
-{
-    LARGE_INTEGER li;
-	// Find frequency
-    QueryPerformanceFrequency(&li);
-    PCFreq = double(li.QuadPart)/1000.0;
-	// Second call needed
-    QueryPerformanceCounter(&li);
-    CounterStart = li.QuadPart;
-}
-
-double GetCounter()
-{
-    LARGE_INTEGER li;
-    QueryPerformanceCounter(&li);
-    return double(li.QuadPart-CounterStart)/PCFreq;
-}
-
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
 int set_raw_data(unsigned char* data, size_t data_len)
 {
   if (!data || !data_len)
@@ -246,31 +188,11 @@ GXL_PLUGIN_EXPORT_OSX
 #endif
 GXL_DYLIB_DEMO_API int _PLUGIN_CALLING_CONVENTION gxl_dylib_set_message(char* message)
 {
+
   if (message) {
-
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-	// Spout Controls
-	float vpdim[4]; // viewport dimensions
-	float mousex, mousey, speed;
-	glGetFloatv(GL_VIEWPORT, vpdim);
-	mousex = g_Xvalue*vpdim[2];
-	mousey = g_Yvalue*vpdim[3];
-	speed = g_Speed;
-
-	if(strstr(message, "MouseX") > 0) {
-		g_message = to_string(mousex);
-	}
-	else if(strstr(message, "MouseY") > 0) {
-		g_message = to_string(mousey);
-	}
-	else if(strstr(message, "Speed") > 0) {
-		g_message = to_string(speed);
-	}
-	else {
-	    g_message = std::string(message);
-	}
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+     g_message = std::string(message);
   }
+
   return 1;
 }
 
@@ -289,7 +211,6 @@ GXL_PLUGIN_EXPORT_OSX
 GXL_DYLIB_DEMO_API int _PLUGIN_CALLING_CONVENTION gxl_dylib_set_raw_data(unsigned char* data, size_t data_len)
 {
 	return set_raw_data(data, data_len);
-
 }
 
 
@@ -321,36 +242,21 @@ GXL_PLUGIN_EXPORT_OSX
 #endif
 GXL_DYLIB_DEMO_API int _PLUGIN_CALLING_CONVENTION gxl_dylib_start(void* render_window, int width, int height, const char* user_data, void* gxl_data)
 {
-
-	/*
-	// Debug console window so printf works
-	FILE* pCout; // should really be freed on exit 
-	AllocConsole();
-	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("GeexLabSpout start\n");
-	*/
-
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	g_width = width;
 	g_height = height;
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	// Spout
-
+	//
 	// Create an OpenGL texture for data transfers
-	InitGLtexture(sendertexture, g_width, g_height);
+	InitGLtexture(g_SenderTexture, g_width, g_height);
 	
 	// Create a Spout sender
 	if(g_message.empty()) g_message = "GeexLab"; // default sender name
-	strcpy_s(sendername, 256, (const char *)g_message.c_str()); // safety
-	bInitialized = sender.CreateSender(sendername, g_width, g_height);
-
-	// Create Spout Controls
-	spoutcontrols.OpenControls(sendername);
-
-	// Start the clock
-	StartCounter();
+	strcpy_s(g_SenderName, 256, (const char *)g_message.c_str());
+	bInitialized = sender.CreateSender(g_SenderName, g_width, g_height);
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 
 	return 1;
 }
@@ -363,8 +269,8 @@ GXL_DYLIB_DEMO_API int _PLUGIN_CALLING_CONVENTION gxl_dylib_stop(const char* use
 {
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	// Spout
+	if(g_SenderTexture != 0) glDeleteTextures(1, &g_SenderTexture);
 	if(bInitialized) sender.ReleaseSender();
-	spoutcontrols.CloseControls();
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
   return 0;
@@ -380,31 +286,13 @@ GXL_DYLIB_DEMO_API int _PLUGIN_CALLING_CONVENTION gxl_dylib_frame(float elapsed_
 	// Spout
 	if(bInitialized) {
 
-		// ???
-		glEnable(GL_LINE_SMOOTH);
-		glEnable(GL_POINT_SMOOTH);
-		glEnable(GL_POLYGON_SMOOTH);
-
 		// Grab the screen into the local spout texture
-		glBindTexture(GL_TEXTURE_2D, sendertexture); 
+		glBindTexture(GL_TEXTURE_2D, g_SenderTexture); 
 		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, g_width, g_height);
 		glBindTexture(GL_TEXTURE_2D, 0); 
 
 		// Send the texture out
-		sender.SendTexture(sendertexture, GL_TEXTURE_2D, g_width, g_height);
-
-		// Check for changes to the controls by the controller
-		if(spoutcontrols.CheckControls(myControls)) {
-			UpdateControlParameters();
-		}
-
-		// Update time
-		lastTime = elapsedTime;
-		elapsedTime = GetCounter()/1000.0; // In seconds - higher resolution than timeGetTime()
-		if(g_UserSpeed > 0)
-			g_Speed = g_Speed + (float)(elapsedTime-lastTime)*g_UserSpeed*2.0f; // increment scaled by user input 0.0 - 2.0
-		else
-			g_Speed = g_Speed + (float)(elapsedTime-lastTime);
+		sender.SendTexture(g_SenderTexture, GL_TEXTURE_2D, g_width, g_height);
 	}
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -422,8 +310,8 @@ GXL_DYLIB_DEMO_API int _PLUGIN_CALLING_CONVENTION gxl_dylib_resize(int width, in
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	// Spout
-	// Update the sender texture to receive the new dimensions
-	InitGLtexture(sendertexture, g_width, g_height);
+	// Update the sender texture size to receive the new dimensions
+	InitGLtexture(g_SenderTexture, g_width, g_height);
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
   return 1;
