@@ -9,16 +9,15 @@ Based on the dll example in he GeexLab sample pack : http://www.geeks3d.com/dl/s
 
 (\host_api\User_Plugin)
 
-Each shader has to be edited individually to include the dll functions required.
+Each shader has to be edited individually to include the dll functions required. Look at the examples in the GLSL_Spout folder.
 
-Look at the example : GLSL_Spout\Spout_voronoi_distances.xml
+For a demo receiver, utility programs and examples, install Spout from here :
 
-SpoutControls.exe can be used to change the mouse and speed values.
+https://github.com/leadedge/Spout2/releases/tag/v2.004
 
-This is a VS2012 project. For the project to compile, the Spout SDK source files have to be in a folder "SpoutSDK" one level above the project folder. SpoutControls.h and SpoutControls.cpp also have to be included. Get them here from Spout2 and ScpoutControls :
+This is a VS2012 project. For the project to compile, the Spout SDK source files have to be in a folder named "SpoutSDK" one level above the project folder. Get them from the SpoutSDK folder in the Spout installation or directly from here :
 
 https://github.com/leadedge/Spout2/tree/master/SpoutSDK/Source
 
-and
 
-https://github.com/leadedge/SpoutControls/tree/master/SOURCE
+

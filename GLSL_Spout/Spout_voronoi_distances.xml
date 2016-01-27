@@ -189,25 +189,7 @@ void main( void )
 		
 		mouse_x, mouse_y = gh_input.mouse_getpos() -- default
 
-		--
-		-- SPOUT - get updated variable data from the Spout dll
-		--
-		gh_utils.dylib_set_message(dlib, "MouseX")
-		local msg = gh_utils.dylib_get_message(dlib)
-		mouse_x = tonumber(msg)
-
-		gh_utils.dylib_set_message(dlib, "MouseY")
-		local msg2 = gh_utils.dylib_get_message(dlib)
-		mouse_y = tonumber(msg2)
-
-		gh_utils.dylib_set_message(dlib, "Speed")
-		local msg3 = gh_utils.dylib_get_message(dlib)
-		speed = tonumber(msg3)
-
-		--
-
-		-- gh_gpu_program.uniform1f(gpu_prog_01, "iGlobalTime", elapsed_time)
-		gh_gpu_program.uniform1f(gpu_prog_01, "iGlobalTime", speed) -- for Spout
+		gh_gpu_program.uniform1f(gpu_prog_01, "iGlobalTime", elapsed_time)
 		gh_gpu_program.uniform3f(gpu_prog_01, "iResolution", winW, winH, 0)
 		gh_gpu_program.uniform4f(gpu_prog_01, "iMouse", mouse_x, winH-mouse_y, 0, 0)
 		gh_gpu_program.uniform1i(gpu_prog_01, "iChannel0", 0);
@@ -221,6 +203,7 @@ void main( void )
 		--
 		gh_utils.dylib_frame(dlib, elapsed_time, "solid")
 		--
+
 		-- Show what the example is
 		gh_utils.font_render(font_a, 10, 20, 0.2, 1.0, 0.0, 1.0, "Spout sender demo - (www.spout.zeal.co)")
 
