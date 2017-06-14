@@ -13,7 +13,7 @@ Each shader has to be edited individually to include the dll functions required.
 
 For a demo receiver, utility programs and examples, install Spout from here :
 
-https://github.com/leadedge/Spout2/releases/tag/v2.004
+http://spout.zeal.co/download-software/
 
 This is a VS2012 project. For the project to compile, the Spout SDK source files have to be in a folder named "SpoutSDK" one level above the project folder. Get them from the SpoutSDK folder in the Spout installation or directly from here :
 
