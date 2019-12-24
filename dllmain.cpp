@@ -29,10 +29,13 @@
 //					- Release local texture on stop
 //		10.03.16	- branch testing
 //		02.06.16	- rebuild for Spout 2.005
+//		14.01.17	- rebuild for Spout 2.006
+//		30.11.18	- rebuild for Spout 2.007 VS2017 - /MT
+//		24.12.19	- rebuild x64 for Spout 2.007 VS2017 - /MT
 //
 //	----------------------------------------------------------------------------------
 //
-//		Copyright (C) 2016. Lynn Jarvis http://spout.zeal.co/
+//		Copyright (C) 2016-2019. Lynn Jarvis http://spout.zeal.co/
 //
 //		This program is free software: you can redistribute it and/or modify
 //		it under the terms of the GNU Lesser General Public License as published by
