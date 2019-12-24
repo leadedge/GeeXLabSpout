@@ -15,9 +15,11 @@ For a demo receiver, utility programs and examples, install Spout from here :
 
 http://spout.zeal.co/download-software/
 
-This is a VS2012 project. For the project to compile, the Spout SDK source files have to be in a folder named "SpoutSDK" one level above the project folder. Get them from the SpoutSDK folder in the Spout installation or directly from here :
+This is a VS2017 project. For the project to compile, the Spout 2.007 SDK source files have to be in a folder named "SpoutSDK" one level above the project folder. Get them from the SpoutSDK folder of the beta branch from here :
 
-https://github.com/leadedge/Spout2/tree/master/SpoutSDK/Source
+https://github.com/leadedge/Spout2/tree/beta/SPOUTSDK/SpoutSDK
+
+
 
 
 
